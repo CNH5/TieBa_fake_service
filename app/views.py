@@ -38,7 +38,7 @@ def register(request):
             password=password,
             name='tieba_' + account
         )
-    except IntegrityError:  # 完整性错误,就是出现两个元组主码一致，就是账号重复存在
+    except IntegrityError:  # 完整性错误,账号重复存在
         return HttpResponse("账号已存在")
     else:
         return HttpResponse("注册成功")
