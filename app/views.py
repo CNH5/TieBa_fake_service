@@ -13,13 +13,16 @@ def login(request):
     try:
         # 获取账号对应的密码
         ap = User.objects.get(pk=request.GET.get("account"))
+
     except ObjectDoesNotExist:
         # 查询结果为空，就是找不到账号
         return HttpResponse("账号不存在")
+
     else:
         if ap.password == request.GET.get("password"):
             # 账号和密码都正确，就是登录成功
             return HttpResponse("登陆成功")
+
         else:
             # 账号正确但是密码错误
             return HttpResponse("密码错误")
@@ -38,8 +41,10 @@ def register(request):
             password=password,
             name='tieba_' + account
         )
-    except IntegrityError:  # 完整性错误,就是出现两个元组主码一致，就是账号重复存在
+
+    except IntegrityError:  # 完整性错误，就是账号重复存在
         return HttpResponse("账号已存在")
+
     else:
         return HttpResponse("注册成功")
 
@@ -73,9 +78,11 @@ def append_tie(request):
     except IntegrityError:
         transaction.rollback(save_point)
         return HttpResponse("invalid")
+
     except ValueError:
         transaction.rollback(save_point)
         return HttpResponse("data invalid!")
+
     else:
         return HttpResponse("succeed")
 
@@ -110,6 +117,7 @@ def get_tie(request):
         # 按照发帖时间排序,就是按照id降序
     ).order_by("-id")
     # print(result.query)  # 输出生成的sql语句,找bug
+
     return JsonResponse(list(result), safe=False)
 
 
@@ -165,8 +173,10 @@ def like(request):
     except ObjectDoesNotExist:  # 没找到,就新建一条
         try:
             create_like[target_type](poster, target_id, like_type)
+
         except IntegrityError or ValueError:
             return HttpResponse("invalid")
+
         else:
             return HttpResponse("add succeed")
     else:
@@ -175,6 +185,7 @@ def like(request):
             record.type = like_type
             record.save()
             return HttpResponse("update succeed")
+
         else:
             record.delete()
             return HttpResponse("cancel succeed")
@@ -213,6 +224,7 @@ def get_floor(request):
         account=request.GET.get("account"),
         order=request.GET.get("order")
     )
+
     return JsonResponse(list(result), safe=False)
 
 
@@ -235,6 +247,7 @@ def get_reply_floor(request):
             output_field=BooleanField())
         )
     ).distinct().order_by("id")
+
     return JsonResponse(list(result), safe=False)
 
 
@@ -260,10 +273,6 @@ def append_floor(request):
             ba_id=tie.ba_id,
         ).update(num=F('num') + 3)
 
-        tie = Tie.objects.filter(pk=tie_id).first()
-        tie.floor_num = tie.floor_num + 1
-        tie.save()
-
         url = Images.objects.create(img=img).img.url if img is not None else None
 
         # 新增楼层
@@ -274,9 +283,11 @@ def append_floor(request):
             floor=tie.floor_num,
             img=url
         )
+
     except IntegrityError:
         transaction.rollback(save_point)
         return HttpResponse("invalid")
+
     else:
         return HttpResponse("succeed")
 
@@ -286,7 +297,7 @@ def append_floor(request):
 def append_reply_floor(request):
     save_point = transaction.savepoint()
 
-    poster = request.POST.get("poster")
+    poster = request.POST.get("account")
     floor = request.POST.get("floor")
     info = request.POST.get("info")
 
@@ -308,6 +319,7 @@ def append_reply_floor(request):
     except IntegrityError:
         transaction.rollback(save_point)
         return HttpResponse("invalid")
+
     else:
         return HttpResponse("succeed")
 
@@ -329,8 +341,10 @@ def get_user_info(request):
         user = User.objects.filter(pk=request.GET.get('account')).extra(
             select={'registration_date': 'DATE_FORMAT(registration_date, "%%Y-%%m-%%d")'}
         ).first()
+
     except ObjectDoesNotExist:
         return HttpResponse("invalid")
+
     else:
         user.__dict__.pop("_state")
         user.__dict__.pop("password")
@@ -373,32 +387,33 @@ def get_user_tie(request):
         )
         # 按照发帖时间排序,就是按照id降序
     ).order_by("-id")
+
     return JsonResponse(list(result), safe=False)
 
 
-# 获取经验
-def get_user_exp(request):
+# 获取吧信息
+def get_ba(request):
     account_id = request.GET.get("account")
-    ba_id = request.GET.get("ba")
 
     try:
-        exp = Exp.objects.filter(
-            account_id=account_id,
-            ba_id=ba_id
-        ).first()
+        ba = Ba.objects.filter(pk=request.GET.get("ba")).first()
+
+        exp = Exp.objects.filter(account_id=account_id, ba=ba).first()
 
         is_sign = SignIn.objects.filter(
-            account_id=account_id,
-            ba_id=ba_id,
+            account_id=account_id, ba=ba,
             date=datetime.datetime.now()
         ).exists()
     except ValueError as e:
         return HttpResponse(e.__str__())
+
     else:
-        return JsonResponse({
-            "exp": 0 if exp is None else exp.num,
-            "sign": is_sign,
-        }, safe=False)
+        result = ba.__dict__
+        result.pop("_state")
+        result["exp"] = 0 if exp is None else exp.num
+        result["signed"] = is_sign
+
+        return JsonResponse(result, safe=False)
 
 
 @transaction.atomic()
@@ -420,9 +435,11 @@ def sign(request):
             id__lte=sign_id,
             date=datetime.date.today()
         ).annotate(num=Count("id")).first()
+
     except IntegrityError or ValueError:
         transaction.rollback(save_point)
         return HttpResponse("invalid")
+
     else:
         return HttpResponse(no.num)
 
@@ -437,8 +454,8 @@ def change_user_info(request):
             introduction="签名是一种态度，我想我可以更酷..." if introduction is None else introduction,
         )
     except ValueError as e:
-        print("数据出错")
         return HttpResponse(e.__str__())
+
     else:
         return HttpResponse('user invalid' if n == 0 else "succeed")
 
@@ -449,14 +466,17 @@ def change_avatar(request):
     save_point = transaction.savepoint()
     try:
         avatar = Images.objects.create(img=request.FILES.get("avatar")).img.url
-        # 正常的图片应该经过额外的加密过后才能保存
+
         User.objects.filter(pk=request.POST.get("account")).update(avatar=avatar)
+
     except ValueError:
         transaction.rollback(save_point)
         return HttpResponse("file invalid")
+
     except ObjectDoesNotExist:
         transaction.rollback(save_point)
         return HttpResponse("account don't exists")
+
     else:
         return HttpResponse("succeed")
 
@@ -470,6 +490,7 @@ def subscription_ba(request):
         )
     except ValueError or IntegrityError:
         return HttpResponse("数据异常!")
+
     else:
         return HttpResponse("关注成功!")
 

@@ -33,7 +33,7 @@ urlpatterns = [
                   path('like', views.like),
                   path('get/user/info', views.get_user_info),
                   path('get/user/tie', views.get_user_tie),
-                  path('get/user/exp', views.get_user_exp),
+                  path('get/ba', views.get_ba),
                   path('sign', views.sign),
                   path('subscription/ba', views.subscription_ba),
                   path('change/user_info', views.change_user_info),
