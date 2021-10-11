@@ -26,7 +26,7 @@ class User(Model):
     # 性别
     sex = models.CharField(max_length=2, choices=Gender.choices, default='未知')
     # 头像
-    avatar = models.TextField(null=True)
+    avatar = models.TextField(default="/media/images/null_user_avatar.jpg")
 
 
 # 储存吧名、吧头像、吧简介等
@@ -40,7 +40,7 @@ class Ba(Model):
 class Tie(Model):
     # 帖子编号自带了
     # 帖子属于哪个吧
-    ba = models.ForeignKey(Ba, default=1, on_delete=models.DO_NOTHING)
+    ba = models.ForeignKey(Ba, on_delete=models.DO_NOTHING)
     # 帖子的发起账号
     poster = models.ForeignKey(User, on_delete=models.CASCADE)
     # 标题
