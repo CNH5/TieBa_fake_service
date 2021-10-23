@@ -88,8 +88,8 @@ def append_tie(request):
 
 
 # 获取帖子的标题和点赞数
-def get_tie(request):
-    result = Tie.objects.filter(ba_id=request.GET.get("ba")).extra(
+def get_tie_value(tie, account):
+    return tie.extra(
         # 格式化时间,获取帖子的回复总数
         select={
             'date': 'DATE_FORMAT(model_tie.date, "%%Y-%%m-%%d %%H:%%i:%%s")',
@@ -109,16 +109,32 @@ def get_tie(request):
         # 标记用户是否点赞过
         liked=Max(Case(
             When(
-                tielike__poster_id=request.GET.get("account"),
+                tielike__poster_id=account,
                 then=F("tielike__type"),
             ),
             output_field=BooleanField())
         )
         # 按照发帖时间排序,就是按照id降序
+    )
+
+
+# 获取帖子列表
+def get_tie_list(request):
+    result = get_tie_value(
+        Tie.objects.filter(ba_id=request.GET.get("ba")),
+        request.GET.get("account")
     ).order_by("-id")
     # print(result.query)  # 输出生成的sql语句,找bug
 
     return JsonResponse(list(result), safe=False)
+
+
+def get_tie_by_id(request):
+    result = get_tie_value(
+        Tie.objects.filter(pk=request.GET.get("id")),
+        request.GET.get("account")
+    ).first()
+    return JsonResponse(result, safe=False)
 
 
 def get_tie_like(poster, tie):
