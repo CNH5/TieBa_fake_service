@@ -499,12 +499,22 @@ def change_avatar(request):
 
 # 关注某个吧
 def subscription_ba(request):
+    ba_id = request.POST.get("ba"),
+    account_id = request.POST.get("account"),
     try:
         Exp.objects.create(
-            ba_id=request.POST.get("ba"),
-            account_id=request.POST.get("account"),
+            ba_id=ba_id,
+            account_id=account_id,
         )
-    except ValueError or IntegrityError:
+    except IntegrityError:
+        Exp.objects.filter(
+            ba_id=ba_id,
+            account_id=account_id,
+        ).update(subscription=True)
+
+        return HttpResponse("关注成功!")
+
+    except ValueError:
         return HttpResponse("数据异常!")
 
     else:
