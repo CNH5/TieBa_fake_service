@@ -34,6 +34,11 @@ def register(request):
     account = request.POST.get("account")
     # 密码
     password = request.POST.get("password")
+
+    if unavailable(account) or unavailable(password):
+        # 检验账号密码是否可用
+        return HttpResponse("账号密码不能为空！")
+
     try:
         # 创建账号
         User.objects.create(
@@ -354,17 +359,22 @@ def save_image(request):
 # 获取用户信息
 def get_user_info(request):
     try:
-        user = User.objects.filter(pk=request.GET.get('account')).extra(
+        user = User.objects.filter(pk=request.GET.get('target')).extra(
             select={'registration_date': 'DATE_FORMAT(registration_date, "%%Y-%%m-%%d")'}
+        ).values(
+            "account",
+            "registration_date",
+            "name",
+            "introduction",
+            "sex",
+            "avatar"
         ).first()
 
     except ObjectDoesNotExist:
         return HttpResponse("invalid")
 
     else:
-        user.__dict__.pop("_state")
-        user.__dict__.pop("password")
-        return JsonResponse(user.__dict__, safe=False)
+        return JsonResponse(user, safe=False)
 
 
 # 获取用户发过的帖子
@@ -427,6 +437,7 @@ def get_ba(request):
         result = ba.__dict__
         result.pop("_state")
         result["exp"] = 0 if exp is None else exp.num
+        result["subscription"] = False if exp is None else exp.subscription
         result["signed"] = is_sign
 
         return JsonResponse(result, safe=False)
@@ -499,17 +510,14 @@ def change_avatar(request):
 
 # 关注某个吧
 def subscription_ba(request):
-    ba_id = request.POST.get("ba"),
-    account_id = request.POST.get("account"),
+    ba = str(request.POST.get("ba"))
+    account = str(request.POST.get("account"))
     try:
-        Exp.objects.create(
-            ba_id=ba_id,
-            account_id=account_id,
-        )
+        Exp.objects.create(ba_id=ba, account_id=account)
     except IntegrityError:
         Exp.objects.filter(
-            ba_id=ba_id,
-            account_id=account_id,
+            ba_id=ba,
+            account_id=account,
         ).update(subscription=True)
 
         return HttpResponse("关注成功!")
